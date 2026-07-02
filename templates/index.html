@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Подключаем стили и скрипт KaTeX для LaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInBody(document.body);"></script>
+
+    <!-- Подключаем marked для Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <title>AsanGPT - классный ИИ</title>
+    <link rel="icon" href="i.png" type="image/png">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+
+        :root {
+            /* Палитра ChatGPT + Gemini (Глубокий темный премиальный тон) */
+            --bg-main: #141416;
+            --bg-sidebar: #0d0d0e;
+            --bg-active-chat: #1a1a1c; 
+            --bg-hover-chat: rgba(255, 255, 255, 0.04);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --input-bg: #1e1e22;
+            --input-border: #2e2e33;
+            
+            /* Фирменные градиенты Gemini + Copilot */
+            --gemini-gradient: linear-gradient(135deg, #4285f4 0%, #9b51e0 50%, #e91e63 100%);
+            --copilot-card-hover: rgba(66, 133, 244, 0.08);
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- СТИЛЬНЫЙ САЙДБАР (ChatGPT/Gemini Style) --- */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+            flex-shrink: 0;
+            border-right: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .brand-section {
+            padding: 4px 8px 16px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: var(--gemini-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .new-chat-btn {
+            background: #1e1e22;
+            color: var(--text-main);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            margin-bottom: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .new-chat-btn:hover {
+            background: #27272c;
+            border-color: #454549;
+            transform: translateY(-1px);
+        }
+
+        .new-chat-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+
+        .history-section-title {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: rgba(255, 255, 255, 0.4);
+            padding: 0 8px 10px 8px;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 400;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #d1d5db;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-item::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .history-item:hover {
+            background: var(--bg-hover-chat);
+            color: #ffffff;
+        }
+
+        .history-item.active {
+            background: var(--bg-active-chat);
+            color: #ffffff;
+            font-weight: 500;
+        }
+        
+        .history-item.active::before {
+            background: #4285f4;
+        }
+
+        /* --- ОСНОВНОЙ КОНТЕЙНЕР ЧАТА --- */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-main);
+            position: relative;
+        }
+
+        /* Экран приветствия в стиле Gemini + Copilot подсказки */
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .welcome-title {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+            background: var(--gemini-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-subtitle {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        /* Блоки быстрых подсказок (Copilot Style) */
+        .copilot-hints {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            width: 100%;
+            max-width: 640px;
+        }
+
+        .hint-card {
+            background: #1e1e22;
+            border: 1px solid var(--input-border);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .hint-card:hover {
+            background: var(--copilot-card-hover);
+            border-color: rgba(66, 133, 244, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .hint-title {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .hint-desc {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        /* --- ЛЕНТА ЧАТА (Premium ChatGPT Layout) --- */
+        .chat-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 20px;
+            display: none;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .message-wrapper {
+            max-width: 720px;
+            width: 100%;
+            margin: 0 auto 32px auto;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .message-wrapper.user .avatar { 
+            background: #2f80ed; 
+            color: white; 
+        }
+        
+        .message-wrapper.ai .avatar { 
+            background: var(--gemini-gradient); 
+            color: white; 
+        }
+
+        .message-content { 
+            flex: 1; 
+            min-width: 0; 
+            line-height: 1.65; 
+            font-size: 1rem;
+            color: #e3e3e3;
+            word-wrap: break-word;
+        }
+
+        /* Оформление Markdown разметки внутри ответов */
+        .message-content p { margin-bottom: 12px; }
+        .message-content p:last-child { margin-bottom: 0; }
+        .message-content code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .message-content pre {
+            background: #18181c;
+            padding: 16px;
+            border-radius: 12px;
+            overflow-x: auto;
+            border: 1px solid #2d2d31;
+            margin: 12px 0;
+        }
+        .message-content pre code { background: transparent; padding: 0; }
+        .message-content img { max-width: 100%; max-height: 320px; border-radius: 12px; margin-top: 12px; border: 1px solid #333; }
+
+        /* --- ИНПУТ-ЗОНА (Плавающая капсула ChatGPT Plus) --- */
+        .input-container {
+            padding: 24px 20px 32px 20px;
+            background: linear-gradient(transparent, var(--bg-main) 40%);
+        }
+
+        .input-wrapper-outer {
+            max-width: 720px;
+            margin: 0 auto;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 14px 10px 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-wrapper-outer:focus-within {
+            border-color: #4f46e5;
+            box-shadow: 0 8px 32px rgba(79, 70, 229, 0.15);
+        }
+
+        /* Панель превью картинок */
+        .attachment-preview {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            margin-bottom: 10px;
+            align-self: flex-start;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .attachment-preview img {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .attachment-preview .file-info {
+            font-size: 0.82rem;
+            color: var(--text-main);
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .attachment-preview .remove-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-inner-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #user-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-size: 1.05rem;
+            resize: none;
+            height: 26px;
+            max-height: 200px;
+            line-height: 26px;
+        }
+
+        .action-icon-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .action-icon-btn:hover {
+            color: #ffffff;
+            background: rgba(255,255,255,0.05);
+        }
+
+        #send-btn {
+            background: #333336;
+            color: #141416;
+            border: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        #send-btn.active { 
+            background: #ffffff; 
+            color: #000000;
+        }
+        
+        #send-btn:hover.active {
+            transform: scale(1.05);
+        }
+        
+        #send-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        #send-btn[disabled] { cursor: not-allowed; opacity: 0.4; }
+    </style>
+</head>
+<body>
+
+    <!-- САЙДБАР -->
+    <div class="sidebar">
+        <div class="brand-section">
+            <div class="brand">AsanGPT</div>
+        </div>
+        <button class="new-chat-btn" id="new-chat-btn">
+            <svg viewBox="0 0 24 24"><path d="M12 5V19M5 12H19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Новый чат
+        </button>
+        
+        <div class="history-section-title">Недавние диалоги</div>
+        <div class="chat-history" id="chat-history"></div>
+    </div>
+
+    <!-- ГЛАВНЫЙ КОНТЕЙНЕР -->
+    <div class="main-container">
+        <!-- Экран приветствия -->
+        <div class="welcome-screen" id="welcome-screen">
+            <h1 class="welcome-title">Воркспейс AsanGPT</h1>
+            <p class="welcome-subtitle">Добри чатбот от Асанали, наслаждайтесь ИИ</p>
+            
+            <!-- Интерактивные карточки быстрых действий в стиле Copilot -->
+            <div class="copilot-hints">
+                <div class="hint-card" onclick="insertHint('Напиши скрипт на JavaScript для анимации красивой кнопки')">
+                    <div class="hint-title">Написать скрипт</div>
+                    <div class="hint-desc">Сделай JS-код для веб-интерфейса</div>
+                </div>
+                <div class="hint-card" onclick="insertHint('Построй 3D график в Desmos и покажи формулу цвета c_1=rgb(...)')">
+                    <div class="hint-title">Desmos Математика</div>
+                    <div class="hint-desc">Помоги разобраться со сложной формулой</div>
+                </div>
+                <div class="hint-card" onclick="insertHint('Разбери синтаксис разметки LaTeX на понятных примерах')">
+                    <div class="hint-title">Форматирование LaTeX</div>
+                    <div class="hint-desc">Как рендерить математические символы</div>
+                </div>
+                <div class="hint-card" onclick="insertHint('Придумай идею для крутой мини-игры в Roblox на языке Luau')">
+                    <div class="hint-title">Геймдев в Roblox</div>
+                    <div class="hint-desc">Идеи для обби и скриптов сценария</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-feed" id="chat-feed"></div>
+
+        <!-- КАПСУЛА СТРОКИ ВВОДА -->
+        <div class="input-container">
+            <div class="input-wrapper-outer">
+                <!-- Контейнер для отображения прикрепленных медиаданных -->
+                <div class="attachment-preview" id="attachment-preview">
+                    <img id="preview-img" src="" style="display:none;">
+                    <span class="file-info" id="file-info"></span>
+                    <button class="remove-btn" onclick="clearAttachment()">✕</button>
+                </div>
+                
+                <div class="input-inner-row">
+                    <!-- Мультимодальная кнопка-скрепка -->
+                    <button class="action-icon-btn" onclick="document.getElementById('file-loader').click()" title="Загрузить файл">
+                        <svg style="width:22px;height:22px" viewBox="0 0 24 24"><path fill="currentColor" d="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z"/></svg>
+                    </button>
+                    <input type="file" id="file-loader" style="display: none;" onchange="handleFileSelect(this.files)">
+
+                    <textarea id="user-input" placeholder="Спросить AsanGPT или вставить картинку..."></textarea>
+                    
+                    <button id="send-btn" disabled>
+                        <svg viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const chatFeed = document.getElementById('chat-feed');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const chatHistoryContainer = document.getElementById('chat-history');
+        const attachmentPreview = document.getElementById('attachment-preview');
+        const previewImg = document.getElementById('preview-img');
+        const fileInfo = document.getElementById('file-info');
+
+        let currentChatId = null;
+        let localData = {};
+        let attachedFileBase64 = null;
+        let attachedFileName = "";
+
+        function generateUUID() {
+            return 'chat_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Перехват Ctrl+V для моментальной вставки скриншотов из буфера
+        window.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let item of items) {
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    handleFileSelect([blob]);
+                }
+            }
+        });
+
+        function handleFileSelect(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            attachedFileName = file.name || "Вставленное изображение";
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                attachedFileBase64 = event.target.result;
+                attachmentPreview.style.display = 'flex';
+                
+                if (file.type && file.type.startsWith('image/')) {
+                    previewImg.src = attachedFileBase64;
+                    previewImg.style.display = 'block';
+                    fileInfo.textContent = "";
+                } else {
+                    previewImg.style.display = 'none';
+                    fileInfo.textContent = attachedFileName;
+                }
+                checkInputStatus();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearAttachment() {
+            attachedFileBase64 = null;
+            attachedFileName = "";
+            attachmentPreview.style.display = 'none';
+            checkInputStatus();
+        }
+
+        function insertHint(text) {
+            userInput.value = text;
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight - 4) + 'px';
+            checkInputStatus();
+            userInput.focus();
+        }
+
+        function checkInputStatus() {
+            if (userInput.value.trim().length > 0 || attachedFileBase64) {
+                sendBtn.removeAttribute('disabled');
+                sendBtn.classList.add('active');
+            } else {
+                sendBtn.setAttribute('disabled', 'true');
+                sendBtn.classList.remove('active');
+            }
+        }
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight - 4) + 'px';
+            checkInputStatus();
+        });
+
+        function renderChat(chatId) {
+            chatFeed.innerHTML = '';
+            currentChatId = chatId;
+            
+            if (!chatId || !localData[chatId] || localData[chatId].messages.length === 0) {
+                welcomeScreen.style.display = 'flex';
+                chatFeed.style.display = 'none';
+                return;
+            }
+
+            welcomeScreen.style.display = 'none';
+            chatFeed.style.display = 'flex';
+
+            localData[chatId].messages.forEach(msg => {
+                appendMessageHTML(msg.content, msg.role, msg.file);
+            });
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+            updateActiveSidebarItem();
+        }
+
+        function appendMessageHTML(text, role, fileBase64 = null) {
+            if (welcomeScreen.style.display !== 'none') {
+                welcomeScreen.style.display = 'none';
+                chatFeed.style.display = 'flex';
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('message-wrapper', role);
+
+            let formattedText = marked.parse(text, { breaks: true });
+            let mediaHtml = "";
+            
+            if (fileBase64 && fileBase64.startsWith('data:image/')) {
+                mediaHtml = `<img src="${fileBase64}">`;
+            } else if (fileBase64) {
+                mediaHtml = `<div style="font-size:0.85rem; color:var(--text-muted); margin-top:6px;">📎 Вложенный документ/файл</div>`;
+            }
+
+            wrapper.innerHTML = `
+                <div class="avatar">${role === 'user' ? 'U' : 'AI'}</div>
+                <div class="message-content">${formattedText} ${mediaHtml}</div>
+            `;
+            
+            chatFeed.appendChild(wrapper);
+
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(wrapper, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+        }
+
+        function updateActiveSidebarItem() {
+            document.querySelectorAll('.history-item').forEach(el => {
+                el.classList.remove('active');
+                if (el.getAttribute('data-id') === currentChatId) {
+                    el.classList.add('active');
+                }
+            });
+        }
+
+        async function loadChatsFromServer() {
+            try {
+                const response = await fetch('/api/get_chats');
+                localData = await response.json();
+                
+                chatHistoryContainer.innerHTML = '';
+                Object.keys(localData).reverse().forEach(id => {
+                    const item = document.createElement('div');
+                    item.classList.add('history-item');
+                    item.setAttribute('data-id', id);
+                    if (id === currentChatId) item.classList.add('active');
+                    item.textContent = localData[id].title || 'Новый чат';
+                    
+                    item.onclick = () => {
+                        renderChat(id);
+                    };
+                    chatHistoryContainer.appendChild(item);
+                });
+            } catch (err) {
+                console.error("Ошибка загрузки истории:", err);
+            }
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text && !attachedFileBase64) return;
+
+            if (!currentChatId) {
+                currentChatId = generateUUID();
+            }
+
+            const fileToSend = attachedFileBase64;
+            userInput.value = '';
+            userInput.style.height = '26px';
+            clearAttachment();
+
+            appendMessageHTML(text || "Отправлен вложенный файл", 'user', fileToSend);
+
+            const loading = document.createElement('div');
+            loading.classList.add('message-wrapper', 'ai');
+            loading.innerHTML = `<div class="avatar">AI</div><div class="message-content" style="color:var(--text-muted)">AsanGPT генерирует ответ...</div>`;
+            chatFeed.appendChild(loading);
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        chat_id: currentChatId, 
+                        message: text,
+                        file: fileToSend
+                    })
+                });
+
+                const data = await response.json();
+                chatFeed.removeChild(loading);
+
+                if (data.error) {
+                    appendMessageHTML(`Ошибка: ${data.error}`, 'ai');
+                } else {
+                    appendMessageHTML(data.response, 'ai');
+                    await loadChatsFromServer();
+                    updateActiveSidebarItem();
+                }
+            } catch (err) {
+                chatFeed.removeChild(loading);
+                appendMessageHTML('Ошибка соединения с сервером.', 'ai');
+            }
+        }
+
+        newChatBtn.addEventListener('click', () => {
+            currentChatId = generateUUID();
+            renderChat(currentChatId);
+            document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        loadChatsFromServer();
+    </script>
+</body>
+</html>
